@@ -1,57 +1,75 @@
 import 'package:cloud/src/providers/file_provider.dart';
+import 'package:cloud/src/utils/alert_util.dart';
+import 'package:cloud/src/utils/directory_util.dart';
+import 'package:cloud/src/utils/files_open_util.dart';
 import 'package:cloud/src/utils/icon_util.dart';
-import 'package:cloud/src/utils/webview.dart';
 import 'package:flutter/material.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
 
+  final _fileOpenHandler = new VideoOpenhandler();
+  final _directoryHandler = new UpdateTreeHandler();
+  final _mp4Support = new Mp4File();
+
+  final scaffoldKey = new GlobalKey<ScaffoldState>();
+  final dirFormKey = new GlobalKey<FormState>();
   final fileProvider = new FileProvider();
-  final separator = '>';
-  final scaffoldKey = GlobalKey<ScaffoldState>();
-  final dirFormKey = GlobalKey<FormState>();
+  final alertUtil = new AlertUtil();
 
-  @override
-  _HomePageState createState() => _HomePageState();
-}
+  HomePage(){
+    // Increasing responsabiity in icons
+    _mp4Support..newRole(new WordFile())
+                .newRole(new PdfFile());
 
-class _HomePageState extends State<HomePage> {
-
-  String relativePath = "";
-  Mp4File mp4Support = new Mp4File();
-
-  
-  _HomePageState(){
-    // Increasing responsabiity
-    mp4Support..newRole(new WordFile())
-               .newRole(new PdfFile());
+    // Increasing responsability in directory operations
+    _directoryHandler..newRole(new MoveNextBack())
+                      .newRole(new DeleteHandler());
   }
 
   @override
-  void initState() {
-    widget.fileProvider.dirElements().then((element){
-      print(element);
-    });
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) {    
+    _directoryHandler.goHome();
     return WillPopScope(
       onWillPop: onWillPop,
       child: Scaffold(
-        key: widget.scaffoldKey,
+        key: scaffoldKey,
         appBar: _getAppBar(),
         body: _getElements(),
-        // bottomNavigationBar: _getBottomNavigationBar(),
-        bottomSheet: _getBottomSheet(),
+        persistentFooterButtons: _getBottomSheet(context),
       ),
     );
   }
 
-  // This is going to be the body of the scaffold
+  /// 
+  /// It's perfect to avoid the closed of the app
+  Future<bool> onWillPop()async{    
+    await _directoryHandler.resolve(["moveBack", null]);
+    await _directoryHandler.resolve(["update", null]);
+    // false here means that return button has no action
+    return false;
+  }
+
+  /// This is the general app bar, what you see in the top of the page
+  Widget _getAppBar() {
+    return AppBar(
+      title: Text('Olympus Cloud'),
+      actions: <Widget>[
+        IconButton(
+          icon: Icon(Icons.cloud_upload),
+          onPressed: (){}
+        ),
+        IconButton(
+          icon: Icon(Icons.home),
+          onPressed: ()async=>await _directoryHandler.goHome(),
+        )
+      ],
+    );
+  }
+
+  /// This is going to be the body of the scaffold
   Widget _getElements() {
     return StreamBuilder(
-      stream: widget.fileProvider.fileData,
+      stream: _directoryHandler.dirStream,
       builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
         
         if(!snapshot.hasData){
@@ -66,233 +84,96 @@ class _HomePageState extends State<HomePage> {
             title: Text('This directory is empty'),
           );
         }
-
-        // See the definition under
-        return _getDirectories(snapshot.data);
-
+        
+        /// This buid the structure of the explorer, with an address
+        /// bar an a body with files and folders
+        return Column(
+          children: <Widget>[
+            _getDirectoryAddressBar(),
+            Divider(),
+            Expanded(child: _getDirectoryListView(snapshot.data)),
+            SizedBox(height: 60.0,)
+          ],
+        );
       },
     );
   }
 
-  /// 
-  /// It's perfect to avoid the closed of the app
-  Future<bool> onWillPop()async{
-    List<String> splitted = relativePath.split(widget.separator);
-    
-    if(splitted.length<=1){
-      relativePath = "";
-      await widget.fileProvider.dirElements();
-    }else{
-      splitted.removeLast();
-      relativePath = splitted.join(widget.separator);
-      await widget.fileProvider.dirElements(path: relativePath);
-    }
-    
-    // false here means that return button has no action
-    return false;
-  }
-
-  Widget _getAppBar() {
-    return AppBar(
-      title: Text('Olympus Cloud'),
-      actions: <Widget>[
-        IconButton(
-          icon: Icon(Icons.cloud_upload),
-          onPressed: (){}
-        ),
-        IconButton(
-          icon: Icon(Icons.home),
-          onPressed: ()async{
-            relativePath = "";
-            await widget.fileProvider.dirElements();
-          },
-        )
-      ],
-    );
-  }
-
-  /// This return a structure like the fie explorer of your phone
-  Widget _getDirectories(List<String> elements) {
-    return Column(
-      children: <Widget>[
-        _getDirectoryAddress(),
-        Divider(),
-        Expanded(
-          child: _getDirectoryListView(elements)
-        ),
-      ],
-    );
-  }
-
-  /// This is something like the address bar in your browser
-  Widget _getDirectoryAddress() {
+  /// This is the address bar of the file explorer
+  Widget _getDirectoryAddressBar() {
     return ListTile(
       leading: Icon(Icons.folder_open),
       title: Text(
-        this.relativePath.split(widget.separator).last==""? "HOME":
-                  this.relativePath.split(widget.separator).last.toUpperCase(),
+        _directoryHandler.currentDirectory,
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
       ),
-      subtitle: Text(
-        "home\\${this.relativePath.replaceAll(widget.separator, '\\')}",
-      ),
+      subtitle: Text(_directoryHandler.currentPath),
     );
   }
 
-  /// 
-  /// These are the directories as such
+  /// This is the dorectory tree
   Widget _getDirectoryListView(List<String> elements) {
     return ListView.builder(
       itemCount: elements.length,
       itemBuilder: (BuildContext context, int index){
-
-        final fileSplitted = elements[index].split('.');
-        final ext = fileSplitted[fileSplitted.length - 1];
-
-        // Foders can't be splitted in more than two elements since they don't contain '.'
-        bool folder = fileSplitted.length==1;
-
-        return ListTile(
-          title: Text(elements[index] ?? 'NA'),
-          leading: folder?Icon(Icons.folder):mp4Support.resolve(ext)??Icon(Icons.info),
-          trailing: folder?Icon(Icons.arrow_forward_ios):null,
-          onLongPress: ()async{
-
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              child: AlertDialog(
-                title: Text('Warning!'),
-                content: Text('Do you want to delete this directory? [${elements[index]}]'),
-                actions: <Widget>[
-                  FlatButton.icon(
-                    icon: Icon(Icons.cancel),
-                    label: Text('Cancel'),
-                    onPressed: ()=>Navigator.of(context).pop(),
-                  ),
-                  FlatButton.icon(
-                    icon: Icon(Icons.check_circle),
-                    color: Colors.red,
-                    label: Text('Delete'),
-                    onPressed: ()async{                            
-                      final path = relativePath == ""? elements[index]:"$relativePath${widget.separator}${elements[index]}";
-                      final res = await widget.fileProvider.removeDirectory(path);
-                      
-                      if(res){
-                        await widget.fileProvider.dirElements(path: relativePath != ""? relativePath:"_");
-                      }
-                      Navigator.of(context).pop();
-                    },
-                  )
-                ],
-              ),
-              
-            );
-          },
-          onTap: ()async{
-            if(folder){
-              relativePath += relativePath.length==0? elements[index]:"${widget.separator}${elements[index]}";
-              await widget.fileProvider.dirElements(path: relativePath);
-            }else{
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (BuildContext context)=>WebView(
-                    url: widget.fileProvider.getFilePath("$relativePath${widget.separator}${elements[index]}"),
-                    name: elements[index]
-                  )
-                )
-              );
-            }
-          },
-        );
-
+        return _getFolderOrFile(context, elements[index]);
       }
     );
   }
 
-  Widget _getBottomSheet() {
+  /// This is for the directory tree, it shows a folder icon
+  /// or a specific icon for each file. It's a molecule element
+  /// of the directory tree
+  Widget _getFolderOrFile(BuildContext context, String element){
+    final fileSplitted = element.split('.');
+    final ext = fileSplitted[fileSplitted.length - 1];
 
-    return BottomSheet(
-      builder: (BuildContext context){
-        return Container(
-          color: ThemeData.dark().cardColor,
-          height: 60.0,
-          child: Row(
-            children: <Widget>[
-              FlatButton.icon(
-                onPressed: (){
+    // Foders can't be splitted in more than two elements since they don't contain '.'
+    bool folder = fileSplitted.length==1;
 
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    child: AlertDialog(
-                      content: Form(
-                        key: widget.dirFormKey,
-                        child: TextFormField(
-                          decoration: InputDecoration(
-                            labelText: "Directory name",
-                            hintText: "Directory name",
-                            prefixIcon: Icon(Icons.create_new_folder)
-                          ),
-                          onSaved: (String value)async{
-                            final path = relativePath == ""? value:"$relativePath${widget.separator}$value";
-                            widget.fileProvider.createDirectory(path);
-                            widget.fileProvider.dirElements(path: relativePath);
-                          },
-                          validator: (String text){
-
-                            final hasDot = text.contains('.');
-                            final hasSep = text.contains(widget.separator);
-                            final hasSlash = text.contains('/');
-                            final hasInvSash = text.contains('\\');
-
-                            if(hasDot || hasSep || hasSlash || hasInvSash){
-                              return "Directory name is invalid";
-                            }
-
-                            return null;
-
-                          },
-                        ),
-                      ),
-                      actions: <Widget>[
-                        FlatButton.icon(
-                          icon: Icon(Icons.cancel),
-                          label: Text('Cancel'),
-                          onPressed: ()=>Navigator.of(context).pop(),
-                        ),
-                        FlatButton.icon(
-                          icon: Icon(Icons.check_circle),
-                          label: Text('Create'),
-                          onPressed: (){
-                            if(widget.dirFormKey.currentState.validate()){
-
-                              widget.dirFormKey.currentState.save();
-                              Navigator.of(context).pop();
-
-                              if(relativePath == ""){
-                                widget.fileProvider.dirElements();
-                              }
-                              else{
-                                widget.fileProvider.dirElements(path: relativePath);                                
-                              }
-                            }
-                          },
-                        )
-                      ],
-                    )
-                  );
-                }, 
-                icon: Icon(Icons.create_new_folder), 
-                label: Text('New Folder'),
-              )
-            ],
-          ),
+    return ListTile(
+      title: Text(element ?? 'NA'),
+      leading: folder?Icon(Icons.folder):_mp4Support.resolve(ext)??Icon(Icons.info),
+      trailing: folder?Icon(Icons.arrow_forward_ios):null,
+      onLongPress: ()async{ // To delete a directory
+        alertUtil.showAlertOkCancel(              
+          title: "Warning!",
+          context: context,
+          content: Text('Do you want to delete this directory? [$element]'),
+          onPressed: ()async{                            
+            await _directoryHandler.resolve(["delete", element]);
+            await _directoryHandler.resolve(["update", null]);
+            Navigator.of(context).pop();
+          },
         );
       },
-      onClosing: (){},
+      onTap: ()async{ // To navigate/open a file
+        if(folder){
+          await _directoryHandler.resolve(['moveNext', element]);
+          await _directoryHandler.resolve(["update", null]);
+        }else{
+          
+          final widgetPage = await _fileOpenHandler.resolve(element);
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context)=>widgetPage
+          ));
+          
+        }
+      },
     );
-
   }
+
+  List<Widget> _getBottomSheet(BuildContext context) {
+    return [
+      FlatButton.icon(
+        onPressed: (){
+          alertUtil.showCreateFolderAlert(context: context);
+        }, 
+        icon: Icon(Icons.create_new_folder), 
+        label: Text('New Folder'),
+      )
+    ];
+  }
+
 }

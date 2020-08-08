@@ -1,29 +1,49 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_webview_plugin/flutter_webview_plugin.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
-class WebView extends StatelessWidget {
-
+class WebViewPage extends StatelessWidget {
   final String url;
   final String name;
+  final Completer<WebViewController> _controller = Completer<WebViewController>();
 
-  WebView({@required this.url, @required this.name});
+  WebViewPage({@required this.url, @required this.name});
+
+  dispose(){
+    this.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return WebviewScaffold(
-      url: this.url,
-      withLocalStorage: true,
-      hidden: true,
-      withZoom: true,
-      displayZoomControls: true,
-      debuggingEnabled: false,            
-      appBar: AppBar(title: Text(this.name ?? "NA"),),      
-      initialChild: Container(
-        color: Colors.redAccent,
-        child: const Center(
-          child: CircularProgressIndicator()
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(name ?? "NA"),
       ),
+      body: WebView(
+        initialUrl: this.url,
+        javascriptMode: JavascriptMode.unrestricted,
+        debuggingEnabled: false,
+        gestureNavigationEnabled: true,      
+        onWebViewCreated: (WebViewController webViewController) {
+          _controller.complete(webViewController);
+        },
+        initialMediaPlaybackPolicy: AutoMediaPlaybackPolicy.always_allow,        
+        javascriptChannels: <JavascriptChannel>[
+          _toasterJavascriptChannel(context),
+        ].toSet(),
+      ),
+    );
+  }
+
+  JavascriptChannel _toasterJavascriptChannel(BuildContext context) {
+    return JavascriptChannel(
+      name: 'Toaster',
+      onMessageReceived: (JavascriptMessage message) {
+        Scaffold.of(context).showSnackBar(
+          SnackBar(content: Text(message.message)),
+        );
+      }
     );
   }
 }

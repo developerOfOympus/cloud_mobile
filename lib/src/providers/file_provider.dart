@@ -17,7 +17,21 @@ class FileProvider {
     fileStream?.close();
   }
 
+  String _cleanAddress(String path){
+    if(path==""){
+      path = "_";
+    }
+    if(path[0] == '>'){
+      path = path.substring(1);
+    }
+    return path;
+  }
+
   Future<bool> dirElements({String path='_'}) async {
+
+    // Cleaning the path
+    path = _cleanAddress(path);
+    //--------------------------
 
     final uri = "http://$server:$port/directory/$path";
 
@@ -32,11 +46,21 @@ class FileProvider {
   }
 
   String getFilePath(String path){
+    
+    // Cleaning the path
+    path = _cleanAddress(path);
+    //--------------------------
+
     final uri = "http://$server:$port/file/$path";
     return uri;         
   }
 
   Future<bool> createDirectory(String path)async{
+    
+    // Cleaning the path
+    path = _cleanAddress(path);
+    //--------------------------
+
     final uri = "http://$server:$port/directory/$path";
 
     final response = await http.post(uri);
@@ -48,6 +72,11 @@ class FileProvider {
   }
 
   Future<bool> removeDirectory(String path)async{
+
+    // Cleaning the path
+    path = _cleanAddress(path);
+    //--------------------------
+
     final uri = "http://$server:$port/directory/$path";
 
     final response = await http.delete(uri);

@@ -1,20 +1,11 @@
+import 'package:cloud/src/utils/patters/chain_of_responsability.dart';
 import 'package:flutter/material.dart';
 
-abstract class _ChainOfResponsabiity {
-
+abstract class _IconHandler extends ChainOfResponsabiity<Image, String> {
   final double _iconSize = 30.0;
-
-  _ChainOfResponsabiity nextHandler;
-  _ChainOfResponsabiity({this.nextHandler});
-
-  Image resolve(String task);
-  // void open(String fileExtension);
-  _ChainOfResponsabiity newRole(_ChainOfResponsabiity role)=>nextHandler=role;
-
 }
 
-class PdfFile extends _ChainOfResponsabiity{
-
+class PdfFile extends _IconHandler{
 
   @override
   Image resolve(String task) {
@@ -31,8 +22,7 @@ class PdfFile extends _ChainOfResponsabiity{
 
 }
 
-class Mp4File extends _ChainOfResponsabiity{
-
+class Mp4File extends _IconHandler{
 
   @override
   Image resolve(String task) {
@@ -49,8 +39,7 @@ class Mp4File extends _ChainOfResponsabiity{
 
 }
 
-class WordFile extends _ChainOfResponsabiity{
-
+class WordFile extends _IconHandler{
 
   @override
   Image resolve(String task) {

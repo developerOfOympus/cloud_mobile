@@ -24,7 +24,9 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^0.12.2
-  flutter_webview_plugin: ^0.3.11
+  webview_flutter: ^0.3.22+1
+  video_player: ^0.10.11+2
+  chewie: ^0.9.10
 
 
   # The following adds the Cupertino Icons font to your application.
