@@ -1,16 +1,8 @@
 # cloud
 
-A new Flutter project.
+This is a project to use my computer storage, something like a cloud that only works in my private network.  
+The frontend will be builded in React in the future, but for now I am programming this mobile application in Flutter, because i want to download movies in my PC and then be able to watch it in my cellphone.
 
-## Getting Started
+The backend is under development in Node.js, here in github is that project too.
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.

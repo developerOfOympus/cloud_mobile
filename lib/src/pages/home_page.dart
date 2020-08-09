@@ -24,6 +24,8 @@ class HomePage extends StatelessWidget {
     // Increasing responsability in directory operations
     _directoryHandler..newRole(new MoveNextBack())
                       .newRole(new DeleteHandler());
+
+    _fileOpenHandler..newRole(new DefaultSystemAppOpen());
   }
 
   @override
@@ -92,7 +94,6 @@ class HomePage extends StatelessWidget {
             _getDirectoryAddressBar(),
             Divider(),
             Expanded(child: _getDirectoryListView(snapshot.data)),
-            SizedBox(height: 60.0,)
           ],
         );
       },
@@ -130,7 +131,7 @@ class HomePage extends StatelessWidget {
     final ext = fileSplitted[fileSplitted.length - 1];
 
     // Foders can't be splitted in more than two elements since they don't contain '.'
-    bool folder = fileSplitted.length==1;
+    bool folder = ext.length>4 || fileSplitted.length == 1;
 
     return ListTile(
       title: Text(element ?? 'NA'),
@@ -141,25 +142,69 @@ class HomePage extends StatelessWidget {
           title: "Warning!",
           context: context,
           content: Text('Do you want to delete this directory? [$element]'),
-          onPressed: ()async{                            
+          onPressed: ()async{    
+            BuildContext alertContext;
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context){
+                alertContext = context;
+                return Container(
+                  color: Colors.transparent,
+                  child: Center(child: CircularProgressIndicator()),
+                );    
+              },    
+            );            
+
             await _directoryHandler.resolve(["delete", element]);
             await _directoryHandler.resolve(["update", null]);
+
+            Navigator.of(alertContext).pop();
             Navigator.of(context).pop();
+            /// Killing the loading alert
           },
         );
       },
       onTap: ()async{ // To navigate/open a file
+        BuildContext alertContext;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context){
+            alertContext = context;
+            return Container(
+              color: Colors.transparent,
+              child: Center(child: CircularProgressIndicator()),
+            );    
+          },    
+        );             
+
         if(folder){
           await _directoryHandler.resolve(['moveNext', element]);
-          await _directoryHandler.resolve(["update", null]);
+          await _directoryHandler.resolve(["update", null]);    
+          /// Killing the loading alert
+          Navigator.of(alertContext).pop();    
         }else{
           
           final widgetPage = await _fileOpenHandler.resolve(element);
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (context)=>widgetPage
-          ));
-          
+            /// Killing the loading alert
+            Navigator.of(alertContext).pop();
+          /// If there is a container widget, that means that user have no
+          /// application to oppen a specific file
+          if(widgetPage is Container){
+            /// Killing the loading alert
+            Navigator.of(alertContext).pop();
+            scaffoldKey.currentState.showSnackBar(new SnackBar(
+              content: Text('You have no app to open this file')
+            ));
+          }
+          else if(widgetPage != null){
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (context)=>widgetPage
+            ));
+          }
         }
+        
       },
     );
   }

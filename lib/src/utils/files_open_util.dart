@@ -1,10 +1,11 @@
+import 'package:flutter/material.dart';
+
 import 'package:chewie/chewie.dart';
 import 'package:cloud/src/providers/file_provider.dart';
 import 'package:cloud/src/utils/directory_util.dart';
 import 'package:cloud/src/utils/patters/chain_of_responsability.dart';
 import 'package:cloud/src/utils/video_player.dart';
-
-import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 abstract class _FileOpenHandler extends ChainOfResponsabiity<Future<Widget>, String>{
@@ -52,4 +53,41 @@ class VideoOpenhandler extends _FileOpenHandler{
     return nextHandler.resolve(role);
   }
 
+}
+
+class ImageOpenHandler extends _FileOpenHandler{
+
+  final allowed = ['jpg', 'jpeg', 'png', 'gif'];
+
+  @override
+  Future<Widget> resolve(String role) async {
+    if(allowed.any((element) => element == role.toLowerCase())){
+      
+    }
+
+    return await nextHandler.resolve(role);
+  }
+
+}
+
+/// You need to include this cass at the end of the chain
+class DefaultSystemAppOpen extends _FileOpenHandler{
+  @override
+  Future<Widget> resolve(String role) async {
+    
+    final fileURL = _fileProvider.getFilePath(
+      "${_directoryHandler.buildPath(null)}>$role"
+    );
+
+    if(await canLaunch(fileURL)){
+      try{
+        await launch(fileURL);
+      }catch(e){
+        print(e ?? "Error");
+      }
+      return null;
+    }
+
+    return Container();
+  }
 }

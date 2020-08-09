@@ -1,3 +1,4 @@
+
 import 'package:cloud/src/utils/directory_util.dart';
 import 'package:flutter/material.dart';
 
@@ -6,23 +7,15 @@ import 'package:flutter/material.dart';
 class AlertUtil {
 
   final _createFormkey = new GlobalKey<FormState>();
+
   ///
   /// Don't forget to add a new handler if you want to do 
   /// something different to update or create a folder
   CreateDirectory _directoryHandler = new CreateDirectory();
-  static AlertUtil _instance;
   Form form;
 
-  factory AlertUtil(){
-    if(_instance==null){
-      _instance = new AlertUtil._internal();
-    }
-
-    return _instance;
-  }
-
-  // private constructor
-  AlertUtil._internal(){
+  AlertUtil(){
+    
     _directoryHandler.newRole(new UpdateTreeHandler());
     // The form for the folder name as such
     form=Form(
@@ -75,7 +68,6 @@ class AlertUtil {
 
   void showCreateFolderAlert({@required BuildContext context}){
 
-    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -103,5 +95,6 @@ class AlertUtil {
       )
     );
   }
+
 
 }
